@@ -1,0 +1,45 @@
+---
+{{- range $key, $val := .Values.persistence.volumes }}
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  labels:
+    {{ include "storage-demo.labels" $ | nindent 4 }}
+  name: {{ template "storage-demo.fullname" $ }}-{{ $key }}
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: {{ .size | quote }}
+  {{- if $.Values.persistence.hostPath }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ template "storage-demo.name" $ }}-{{ $key }}
+  {{- else if $.Values.persistence.storageClassName }}
+  storageClassName: {{ $.Values.persistence.storageClassName }}
+  {{- end }}
+---
+{{- if $.Values.persistence.hostPath }}
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: {{ template "storage-demo.fullname" $ }}-{{ $key }}
+  labels:
+    {{ include "storage-demo.labels" $ | nindent 4 }}
+    app.kubernetes.io/name: {{ template "storage-demo.name" $ }}-{{ $key }}
+spec:
+  storageClassName: ""
+  persistentVolumeReclaimPolicy: Recycle
+  claimRef:
+    name: {{ template "storage-demo.fullname" $ }}-{{ $key }}
+    namespace: {{ $.Release.Namespace }}
+  capacity:
+    storage: {{ $val.size | quote }}
+  accessModes:
+    - ReadWriteOnce
+  hostPath:
+    path: {{ $.Values.persistence.hostPath }}/medias/{{ $key }}
+    type: DirectoryOrCreate
+{{- end }}
+{{- end }}
